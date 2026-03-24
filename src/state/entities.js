@@ -13,6 +13,7 @@ export function createGiantState() {
     targetHouseId: null,
     targetVillagerId: null,
     pickupTimer: 0,
+    slamTimer: 0,
     ropeStack: [],
     ropedTime: 0,
   };
@@ -37,6 +38,10 @@ export function createVillagerState(id, x, z) {
     throwVelY: 0,
     throwVelZ: 0,
     throwY: 0,
+    // ragdoll state (ejected from destroyed house)
+    ragdoll: false,
+    ragdollY: 0,
+    ragdollVelY: 0,
   };
 }
 

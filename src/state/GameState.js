@@ -56,6 +56,7 @@ export class GameState {
     tickCollisions(this);
     tickRope(this, delta);
     tickThrownVillagers(this, delta);
+    this.tickRagdollVillagers(delta);
 
     // Win condition: all villagers dead
     this.checkWinCondition();
@@ -106,6 +107,17 @@ export class GameState {
 
   tickGiantMovement(delta) {
     const g = this.giant;
+
+    if (g.status === 'slamming') {
+      g.slamTimer += delta;
+      if (g.slamTimer >= GIANT.SLAM_DURATION) {
+        g.status = 'idle';
+        g.slamTimer = 0;
+        g.targetHouseId = null;
+      }
+      return;
+    }
+
     if (g.status !== 'moving_to_house' && g.status !== 'moving_to_villager') return;
 
     // If tracking a villager, update target position to their current location
@@ -125,9 +137,9 @@ export class GameState {
 
     if (dist < arrivalDist) {
       if (g.status === 'moving_to_house') {
-        g.status = 'picking_up';
-        g.pickupTimer = 0;
-        // House interaction handled in Phase 3
+        g.status = 'slamming';
+        g.slamTimer = 0;
+        // targetHouseId kept set; HouseSystem fires at slamTimer >= VILLAGER_RAGDOLL_TIME
       } else {
         g.status = 'idle';
       }
@@ -153,6 +165,15 @@ export class GameState {
     if (Math.abs(angleDiff) < Math.PI / 3) {
       g.x += (dx / dist) * GIANT.SPEED * delta;
       g.z += (dz / dist) * GIANT.SPEED * delta;
+    }
+  }
+
+  tickRagdollVillagers(delta) {
+    const gravity = 20;
+    for (const v of this.villagers.values()) {
+      if (!v.ragdoll || v.ragdollY <= 0) continue;
+      v.ragdollVelY -= gravity * delta;
+      v.ragdollY = Math.max(0, v.ragdollY + v.ragdollVelY * delta);
     }
   }
 

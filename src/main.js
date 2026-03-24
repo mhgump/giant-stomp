@@ -57,7 +57,7 @@ function animate() {
 
   // 3. Sync renderers from state
   player.syncFromState(gameState.giant, delta);
-  houseRenderer.sync(gameState.houses, gameState.giant);
+  houseRenderer.sync(gameState.houses, gameState.giant, delta);
   villagerRenderer.sync(gameState.villagers, delta);
   ropeRenderer.sync(gameState.giant, gameState.villagers);
   hud.update(gameState);

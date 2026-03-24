@@ -3,42 +3,33 @@ import { spendEnergy, restoreEnergy } from './EnergySystem.js';
 
 export function tickHouseInteraction(state, delta) {
   const g = state.giant;
-  if (g.status !== 'picking_up') return;
+  if (g.status !== 'slamming' || !g.targetHouseId) return;
 
-  g.pickupTimer += delta;
+  // At 0.5s into the slam: launch house + ragdoll villagers
+  if (g.slamTimer >= GIANT.VILLAGER_RAGDOLL_TIME) {
+    const house = state.houses.get(g.targetHouseId);
+    if (house && !house.destroyed) {
+      spendEnergy(state, GIANT.PICKUP_COST);
 
-  if (g.pickupTimer >= GIANT.PICKUP_DURATION) {
-    resolvePickup(state);
-  }
-}
-
-function resolvePickup(state) {
-  const g = state.giant;
-  const house = state.houses.get(g.targetHouseId);
-
-  if (house && !house.destroyed) {
-    // Spend energy to pick up
-    spendEnergy(state, GIANT.PICKUP_COST);
-
-    // Consume occupants and restore energy
-    for (const vid of house.occupantIds) {
-      const v = state.villagers.get(vid);
-      if (v && v.alive) {
-        v.alive = false;
-        v.isInside = false;
-        v.houseId = null;
-        restoreEnergy(state, GIANT.KILL_RESTORE);
+      for (const vid of house.occupantIds) {
+        const v = state.villagers.get(vid);
+        if (v && v.alive) {
+          v.alive = false;
+          v.isInside = false;
+          v.houseId = null;
+          v.ragdoll = true;
+          v.ragdollY = 13;
+          v.ragdollVelY = 3;
+          v.x = house.x + (Math.random() - 0.5) * 3;
+          v.z = house.z + (Math.random() - 0.5) * 3;
+          restoreEnergy(state, GIANT.KILL_RESTORE);
+        }
       }
+
+      house.occupantIds = [];
+      house.hasRope = false;
+      house.destroyed = true;
+      house.pickingUp = false;
     }
-    house.occupantIds = [];
-
-    // Destroy rope and house
-    house.hasRope = false;
-    house.destroyed = true;
-    house.pickingUp = false;
   }
-
-  g.status = 'idle';
-  g.targetHouseId = null;
-  g.pickupTimer = 0;
 }

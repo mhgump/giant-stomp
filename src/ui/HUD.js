@@ -135,6 +135,28 @@ export class HUD {
     this.ropeBarOuter.appendChild(this.ropeBarInner);
     this.container.appendChild(this.ropeBarOuter);
 
+    // Rope danger flash — left and right vertical edge panels
+    const edgeStyle = {
+      position: 'absolute',
+      top: '0',
+      width: '18%',
+      height: '100%',
+      pointerEvents: 'none',
+      opacity: '0',
+    };
+    this.flashLeft = document.createElement('div');
+    Object.assign(this.flashLeft.style, edgeStyle, {
+      left: '0',
+      background: 'linear-gradient(to right, rgba(220,0,0,1) 0%, transparent 100%)',
+    });
+    this.flashRight = document.createElement('div');
+    Object.assign(this.flashRight.style, edgeStyle, {
+      right: '0',
+      background: 'linear-gradient(to left, rgba(220,0,0,1) 0%, transparent 100%)',
+    });
+    this.container.appendChild(this.flashLeft);
+    this.container.appendChild(this.flashRight);
+
     // Game over screen
     this.gameOverScreen = document.createElement('div');
     Object.assign(this.gameOverScreen.style, {
@@ -170,6 +192,19 @@ export class HUD {
       const rope = g.ropeStack[0];
       const progress = (rope.spamCount / 8) * 100; // ROPE.SPAM_HITS_NEEDED
       this.ropeBarInner.style.width = `${progress}%`;
+    }
+
+    // Rope danger flash
+    if (roped) {
+      const danger = Math.min(1, g.ropedTime / 10); // 10 = ROPE.DOWN_THRESHOLD
+      const freq = 0.4 + danger * 1.6; // 0.4–2 Hz
+      const pulse = Math.max(0, Math.sin(Date.now() / 1000 * freq * Math.PI * 2));
+      const opacity = pulse * (0.15 + danger * 0.65);
+      this.flashLeft.style.opacity = opacity;
+      this.flashRight.style.opacity = opacity;
+    } else {
+      this.flashLeft.style.opacity = 0;
+      this.flashRight.style.opacity = 0;
     }
 
     // Game over

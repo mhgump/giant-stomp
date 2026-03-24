@@ -22,6 +22,11 @@ export class Player {
 
   syncFromState(giantState, delta) {
     this.character.mixer.update(delta ?? 0);
+
+    if (giantState.status === 'slamming' && !this.character.isSlamming) {
+      playGiantGroundSlam(this.character);
+    }
+
     this.group.position.x = giantState.x;
     this.group.position.z = giantState.z;
     this.group.rotation.y = giantState.rotation;
