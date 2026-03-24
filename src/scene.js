@@ -1,4 +1,7 @@
 import * as THREE from 'three';
+import { ROPE } from './state/constants.js';
+
+let nextHouseId = 0;
 
 export function createScene() {
   const scene = new THREE.Scene();
@@ -75,8 +78,9 @@ export function createScene() {
   }
 
   // Houses placed in cell centers (offset by half a cell from road lines)
-  const houses = [];
-  const halfCells = halfLines; // cells exist between -halfLines and halfLines
+  const houseMeshes = new Map();  // id -> THREE.Group
+  const housePositions = [];      // plain data for GameState
+  const halfCells = halfLines;
   for (let row = -halfCells; row < halfCells; row++) {
     for (let col = -halfCells; col < halfCells; col++) {
       const x = (col + 0.5) * cellSize;
@@ -86,18 +90,27 @@ export function createScene() {
       // Skip if outside the ring wall
       if (dist + 2.5 > wallRadius) continue;
 
-      // Skip the center cell where the player spawns
+      // Skip the center cells where the player spawns
       if (col === -1 && row === -1) continue;
       if (col === 0 && row === -1) continue;
       if (col === -1 && row === 0) continue;
       if (col === 0 && row === 0) continue;
 
-      const house = createHouse();
+      const id = nextHouseId++;
+      const house = createHouse(id);
       house.position.set(x, 0, z);
       house.castShadow = true;
       scene.add(house);
-      houses.push(house);
+      houseMeshes.set(id, house);
+      housePositions.push({ id, x, z, hasRope: false });
     }
+  }
+
+  // Pre-place rope in random houses
+  const ropeCount = Math.min(ROPE.INITIAL_ROPE_HOUSES, housePositions.length);
+  const shuffled = [...housePositions].sort(() => Math.random() - 0.5);
+  for (let i = 0; i < ropeCount; i++) {
+    shuffled[i].hasRope = true;
   }
 
   // Ring wall
@@ -118,12 +131,13 @@ export function createScene() {
   ringWall.receiveShadow = true;
   scene.add(ringWall);
 
-  return { scene, camera, houses };
+  return { scene, camera, houseMeshes, housePositions };
 }
 
-function createHouse() {
+function createHouse(id) {
   const group = new THREE.Group();
   group.userData.type = 'house';
+  group.userData.id = id;
 
   // Walls
   const wallGeo = new THREE.BoxGeometry(3, 2.5, 3);

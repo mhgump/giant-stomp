@@ -1,11 +1,12 @@
 import * as THREE from 'three';
 
 export class InputManager {
-  constructor(camera, selectableObjects) {
+  constructor(camera, houseMeshes) {
     this.camera = camera;
-    this.selectableObjects = selectableObjects;
+    this.houseMeshes = houseMeshes; // Map<id, THREE.Group>
     this.raycaster = new THREE.Raycaster();
-    this.target = null; // world position to move toward
+    this.pendingCommand = null;
+    this.spacePressed = false;
 
     // Touch (primary) and mouse (fallback for desktop testing)
     window.addEventListener('touchstart', (e) => {
@@ -15,6 +16,13 @@ export class InputManager {
 
     window.addEventListener('click', (e) => {
       this.castFromScreen(e.clientX, e.clientY);
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        this.spacePressed = true;
+      }
     });
   }
 
@@ -26,22 +34,43 @@ export class InputManager {
 
     this.raycaster.setFromCamera(ndc, this.camera);
 
-    // Collect all meshes from selectable groups
+    // Collect all meshes from house groups
     const meshes = [];
-    for (const obj of this.selectableObjects) {
-      obj.traverse((child) => {
+    for (const [, group] of this.houseMeshes) {
+      group.traverse((child) => {
         if (child.isMesh) meshes.push(child);
       });
     }
 
     const hits = this.raycaster.intersectObjects(meshes);
     if (hits.length > 0) {
-      // Walk up to find the group with userData.type
+      // Walk up to find the group with userData.id
       let target = hits[0].object;
-      while (target.parent && !target.userData.type) {
+      while (target.parent && target.userData.id === undefined) {
         target = target.parent;
       }
-      this.target = target.position.clone();
+      if (target.userData.id !== undefined) {
+        this.pendingCommand = { type: 'move_to_house', houseId: target.userData.id };
+      }
     }
+  }
+
+  consumeCommand() {
+    const cmd = this.pendingCommand;
+    this.pendingCommand = null;
+    return cmd;
+  }
+
+  consumeSpace() {
+    if (this.spacePressed) {
+      this.spacePressed = false;
+      return true;
+    }
+    return false;
+  }
+
+  // Called by HUD rope button
+  triggerSpace() {
+    this.spacePressed = true;
   }
 }
