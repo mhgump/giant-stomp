@@ -1,68 +1,71 @@
-import * as THREE from 'three';
+import { createVillager, stopVillagerRunning } from '../characters.js';
 
 export class VillagerRenderer {
-  constructor(scene) {
+  constructor(scene, characterLibrary) {
     this.scene = scene;
-    this.meshes = new Map(); // id -> THREE.Group
+    this.library = characterLibrary;
+    this.villagers = new Map(); // id -> { root, character }
   }
 
-  sync(villagerStates) {
+  sync(villagerStates, delta) {
     for (const [id, v] of villagerStates) {
-      let mesh = this.meshes.get(id);
+      let entry = this.villagers.get(id);
 
-      // Create mesh on first encounter
-      if (!mesh) {
-        mesh = createVillagerMesh();
-        this.scene.add(mesh);
-        this.meshes.set(id, mesh);
+      // Create on first encounter
+      if (!entry) {
+        const character = createVillager(this.library);
+        this.scene.add(character.root);
+        entry = { character };
+        this.villagers.set(id, entry);
       }
+
+      const { character } = entry;
 
       if (!v.alive && !v.thrown) {
-        mesh.visible = false;
+        character.root.visible = false;
         continue;
       }
 
-      // Handle thrown animation
+      // Handle thrown arc — tumble in the air, no running
       if (v.thrown) {
-        mesh.visible = true;
-        mesh.position.set(v.x, v.throwY, v.z);
-        mesh.rotation.x += 0.15; // tumble
-        mesh.rotation.z += 0.1;
+        character.root.visible = true;
+        character.mixer.update(0); // freeze animation mid-pose
+        character.root.position.set(v.x, v.throwY, v.z);
+        character.root.rotation.x += 0.15;
+        character.root.rotation.z += 0.1;
         continue;
       }
 
-      // Hide if inside a house
-      mesh.visible = !v.isInside;
-
-      if (!v.isInside) {
-        mesh.position.set(v.x, 0, v.z);
-        mesh.rotation.y = v.rotation;
-        // Reset any tumble rotation
-        mesh.rotation.x = 0;
-        mesh.rotation.z = 0;
+      // Inside a house — hidden, stopped at default pose
+      if (v.isInside) {
+        if (character.root.visible) {
+          stopVillagerRunning(character);
+          character.root.visible = false;
+        }
+        continue;
       }
+
+      // Roping — visible but still
+      if (v.aiState === 'ROPING') {
+        if (character.runAction.isRunning()) stopVillagerRunning(character);
+        character.root.visible = true;
+        character.mixer.update(0);
+        character.root.position.set(v.x, 0, v.z);
+        character.root.rotation.y = v.rotation + Math.PI;
+        continue;
+      }
+
+      // Outside — visible and running
+      if (!character.root.visible || !character.runAction.isRunning()) {
+        character.runAction.reset().play();
+        character.root.visible = true;
+        character.root.rotation.x = 0;
+        character.root.rotation.z = 0;
+      }
+
+      character.mixer.update(delta);
+      character.root.position.set(v.x, 0, v.z);
+      character.root.rotation.y = v.rotation + Math.PI;
     }
   }
-}
-
-function createVillagerMesh() {
-  const group = new THREE.Group();
-
-  // Body
-  const bodyGeo = new THREE.CylinderGeometry(0.25, 0.25, 0.8, 8);
-  const bodyMat = new THREE.MeshStandardMaterial({ color: 0x44aa44 });
-  const body = new THREE.Mesh(bodyGeo, bodyMat);
-  body.position.y = 0.6;
-  body.castShadow = true;
-  group.add(body);
-
-  // Head
-  const headGeo = new THREE.SphereGeometry(0.2, 8, 8);
-  const headMat = new THREE.MeshStandardMaterial({ color: 0xffcc88 });
-  const head = new THREE.Mesh(headGeo, headMat);
-  head.position.y = 1.2;
-  head.castShadow = true;
-  group.add(head);
-
-  return group;
 }

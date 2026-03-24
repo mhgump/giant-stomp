@@ -24,7 +24,7 @@ const input = new InputManager(camera, houseMeshes);
 const gameState = new GameState(housePositions);
 const hud = new HUD(input);
 const houseRenderer = new HouseRenderer(scene, houseMeshes);
-const villagerRenderer = new VillagerRenderer(scene);
+const villagerRenderer = new VillagerRenderer(scene, characterLibrary);
 const ropeRenderer = new RopeRenderer(scene);
 const bubbleSystem = new BubbleSystem((villagerId) => {
   gameState.addCommand({ type: 'move_to_villager', villagerId });
@@ -58,7 +58,7 @@ function animate() {
   // 3. Sync renderers from state
   player.syncFromState(gameState.giant, delta);
   houseRenderer.sync(gameState.houses, gameState.giant);
-  villagerRenderer.sync(gameState.villagers);
+  villagerRenderer.sync(gameState.villagers, delta);
   ropeRenderer.sync(gameState.giant, gameState.villagers);
   hud.update(gameState);
   bubbleSystem.update(gameState, camera);
