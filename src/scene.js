@@ -40,20 +40,52 @@ export function createScene() {
   ground.receiveShadow = true;
   scene.add(ground);
 
-  // A few scattered boxes to give the world some landmarks
-  const boxGeo = new THREE.BoxGeometry(2, 2, 2);
-  const boxMat = new THREE.MeshStandardMaterial({ color: 0xcc8844 });
-  for (let i = 0; i < 20; i++) {
-    const box = new THREE.Mesh(boxGeo, boxMat);
-    box.position.set(
-      (Math.random() - 0.5) * 80,
-      1,
-      (Math.random() - 0.5) * 80
+  // Houses
+  const houses = [];
+  for (let i = 0; i < 10; i++) {
+    const house = createHouse();
+    house.position.set(
+      (Math.random() - 0.5) * 60,
+      0,
+      (Math.random() - 0.5) * 60
     );
-    box.castShadow = true;
-    box.receiveShadow = true;
-    scene.add(box);
+    house.rotation.y = Math.random() * Math.PI * 2;
+    house.castShadow = true;
+    scene.add(house);
+    houses.push(house);
   }
 
-  return { scene, camera };
+  return { scene, camera, houses };
+}
+
+function createHouse() {
+  const group = new THREE.Group();
+  group.userData.type = 'house';
+
+  // Walls
+  const wallGeo = new THREE.BoxGeometry(3, 2.5, 3);
+  const wallMat = new THREE.MeshStandardMaterial({ color: 0xdecba4 });
+  const walls = new THREE.Mesh(wallGeo, wallMat);
+  walls.position.y = 1.25;
+  walls.castShadow = true;
+  walls.receiveShadow = true;
+  group.add(walls);
+
+  // Roof
+  const roofGeo = new THREE.ConeGeometry(2.8, 1.8, 4);
+  const roofMat = new THREE.MeshStandardMaterial({ color: 0x8b4513 });
+  const roof = new THREE.Mesh(roofGeo, roofMat);
+  roof.position.y = 3.4;
+  roof.rotation.y = Math.PI / 4;
+  roof.castShadow = true;
+  group.add(roof);
+
+  // Door
+  const doorGeo = new THREE.PlaneGeometry(0.8, 1.4);
+  const doorMat = new THREE.MeshStandardMaterial({ color: 0x654321 });
+  const door = new THREE.Mesh(doorGeo, doorMat);
+  door.position.set(0, 0.7, 1.51);
+  group.add(door);
+
+  return group;
 }

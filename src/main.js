@@ -10,12 +10,12 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
 
-const { scene, camera } = createScene();
+const { scene, camera, houses } = createScene();
 const player = new Player(scene);
-const input = new InputManager();
+const input = new InputManager(camera, houses);
 
 // Third-person camera offset
-const cameraOffset = new THREE.Vector3(0, 8, 12);
+const cameraOffset = new THREE.Vector3(0, 25, 35);
 
 const clock = new THREE.Clock();
 

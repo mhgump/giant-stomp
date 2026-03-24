@@ -27,6 +27,7 @@ export class Player {
     nose.rotation.x = -Math.PI / 2;
     this.group.add(nose);
 
+    this.group.scale.set(5, 5, 5);
     scene.add(this.group);
 
     this.speed = 8;
@@ -39,30 +40,31 @@ export class Player {
   }
 
   update(input, delta) {
-    const direction = new THREE.Vector3();
+    if (!input.target) return;
 
-    if (input.keys.forward) direction.z -= 1;
-    if (input.keys.backward) direction.z += 1;
-    if (input.keys.left) direction.x -= 1;
-    if (input.keys.right) direction.x += 1;
+    const target = input.target;
+    const dx = target.x - this.group.position.x;
+    const dz = target.z - this.group.position.z;
+    const dist = Math.sqrt(dx * dx + dz * dz);
 
-    if (direction.lengthSq() > 0) {
-      direction.normalize();
-
-      // Rotate character to face movement direction
-      const targetAngle = Math.atan2(direction.x, direction.z);
-      const currentAngle = this.group.rotation.y;
-      let angleDiff = targetAngle - currentAngle;
-
-      // Normalize angle difference to [-PI, PI]
-      while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-      while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-
-      this.group.rotation.y += angleDiff * this.turnSpeed * delta * 5;
-
-      // Move in input direction
-      this.group.position.x += direction.x * this.speed * delta;
-      this.group.position.z += direction.z * this.speed * delta;
+    // Stop when close enough
+    if (dist < 1.5) {
+      input.target = null;
+      return;
     }
+
+    // Face the target
+    const targetAngle = Math.atan2(dx, dz) + Math.PI;
+    const currentAngle = this.group.rotation.y;
+    let angleDiff = targetAngle - currentAngle;
+    while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+    while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+    this.group.rotation.y += angleDiff * this.turnSpeed * delta * 5;
+
+    // Move toward target
+    const moveX = (dx / dist) * this.speed * delta;
+    const moveZ = (dz / dist) * this.speed * delta;
+    this.group.position.x += moveX;
+    this.group.position.z += moveZ;
   }
 }
