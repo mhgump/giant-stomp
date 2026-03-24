@@ -43,11 +43,11 @@ function animate() {
   if (cmd) gameState.addCommand(cmd);
 
   if (input.consumeSpace()) {
-    if (gameState.giant.ropeStack.length > 0) {
-      gameState.addCommand({ type: 'spam_space' });
-    } else {
-      gameState.addCommand({ type: 'roar' });
-    }
+    gameState.addCommand({ type: 'spam_space' });
+  }
+
+  if (input.consumeRoar()) {
+    gameState.addCommand({ type: 'roar' });
   }
 
   // 2. Tick game state

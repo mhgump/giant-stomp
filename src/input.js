@@ -7,6 +7,7 @@ export class InputManager {
     this.raycaster = new THREE.Raycaster();
     this.pendingCommand = null;
     this.spacePressed = false;
+    this.roarPressed = false;
 
     // Touch (primary) and mouse (fallback for desktop testing)
     window.addEventListener('touchstart', (e) => {
@@ -22,6 +23,9 @@ export class InputManager {
       if (e.code === 'Space') {
         e.preventDefault();
         this.spacePressed = true;
+      }
+      if (e.code === 'KeyR') {
+        this.roarPressed = true;
       }
     });
   }
@@ -69,8 +73,21 @@ export class InputManager {
     return false;
   }
 
-  // Called by HUD rope button
+  consumeRoar() {
+    if (this.roarPressed) {
+      this.roarPressed = false;
+      return true;
+    }
+    return false;
+  }
+
+  // Called by HUD break button
   triggerSpace() {
     this.spacePressed = true;
+  }
+
+  // Called by HUD roar button
+  triggerRoar() {
+    this.roarPressed = true;
   }
 }

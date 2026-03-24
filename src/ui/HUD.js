@@ -76,6 +76,42 @@ export class HUD {
     });
     this.container.appendChild(this.ropeButton);
 
+    // Roar button (mobile) — always visible, bottom center
+    this.roarButton = document.createElement('div');
+    Object.assign(this.roarButton.style, {
+      position: 'absolute',
+      bottom: '40px',
+      left: '50%',
+      transform: 'translateX(-50%)',
+      width: '80px',
+      height: '80px',
+      borderRadius: '50%',
+      background: 'rgba(255, 180, 0, 0.8)',
+      border: '3px solid rgba(255,255,255,0.6)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      color: '#fff',
+      fontSize: '14px',
+      fontWeight: 'bold',
+      textAlign: 'center',
+      lineHeight: '80px',
+      pointerEvents: 'auto',
+      userSelect: 'none',
+      touchAction: 'none',
+    });
+    this.roarButton.textContent = 'ROAR';
+    this.roarButton.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      this.input.triggerRoar();
+    }, { passive: false });
+    this.roarButton.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.input.triggerRoar();
+    });
+    this.container.appendChild(this.roarButton);
+
     // Rope progress bar (shown when roped)
     this.ropeBarOuter = document.createElement('div');
     Object.assign(this.ropeBarOuter.style, {
@@ -126,7 +162,7 @@ export class HUD {
     const pct = Math.max(0, (g.energy / g.maxEnergy) * 100);
     this.energyBarInner.style.width = `${pct}%`;
 
-    // Rope button + progress
+    // Break button + progress only when roped; roar always visible
     const roped = g.ropeStack.length > 0;
     this.ropeButton.style.display = roped ? 'flex' : 'none';
     this.ropeBarOuter.style.display = roped ? 'block' : 'none';

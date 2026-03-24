@@ -30,6 +30,7 @@ export function createVillagerState(id, x, z) {
     houseId: null,
     targetHouseId: null,
     hasRope: false,
+    bannedHouseId: null, // house they can't return to after being roared out
     // thrown animation state
     thrown: false,
     throwVelX: 0,

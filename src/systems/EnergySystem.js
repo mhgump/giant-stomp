@@ -2,7 +2,8 @@ import { GIANT } from '../state/constants.js';
 
 export function tickEnergy(state, delta) {
   const g = state.giant;
-  g.energy -= GIANT.PASSIVE_DRAIN * delta;
+  // TODO: re-enable passive drain once balancing
+  // g.energy -= GIANT.PASSIVE_DRAIN * delta;
   if (g.energy <= 0) {
     g.energy = 0;
     state.clock.gameOver = true;
