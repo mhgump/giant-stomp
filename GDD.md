@@ -94,3 +94,12 @@ in houses and search for rope to down him.
 - Death
 - House pickup
 - Game over
+
+## Pathing
+
+- Both the villagers and giant are restricted to traveling on the paths between
+  houses
+- Both the villagers and giants will take the shortest path to their target
+  - If there are multiple shortest paths, a random one is taken
+- When villagers are seeking the giant, they will pursue the current shortest
+  path between them and the giant until they are within a one grid space radius
