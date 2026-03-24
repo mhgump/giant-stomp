@@ -31,12 +31,15 @@ export class Player {
     scene.add(this.group);
 
     this.speed = 8;
-    this.turnSpeed = 3;
-    this.velocity = new THREE.Vector3();
+    this.turnSpeed = 2.5; // radians per second
   }
 
   get position() {
     return this.group.position;
+  }
+
+  get rotation() {
+    return this.group.rotation.y;
   }
 
   update(input, delta) {
@@ -53,18 +56,26 @@ export class Player {
       return;
     }
 
-    // Face the target
+    // Calculate desired facing angle (nose points -Z, so offset by PI)
     const targetAngle = Math.atan2(dx, dz) + Math.PI;
-    const currentAngle = this.group.rotation.y;
-    let angleDiff = targetAngle - currentAngle;
+    let angleDiff = targetAngle - this.group.rotation.y;
     while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
     while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-    this.group.rotation.y += angleDiff * this.turnSpeed * delta * 5;
 
-    // Move toward target
-    const moveX = (dx / dist) * this.speed * delta;
-    const moveZ = (dz / dist) * this.speed * delta;
-    this.group.position.x += moveX;
-    this.group.position.z += moveZ;
+    // Turn toward target at a fixed rate
+    const maxTurn = this.turnSpeed * delta;
+    if (Math.abs(angleDiff) > maxTurn) {
+      this.group.rotation.y += Math.sign(angleDiff) * maxTurn;
+    } else {
+      this.group.rotation.y += angleDiff;
+    }
+
+    // Only move forward when roughly facing the target
+    if (Math.abs(angleDiff) < Math.PI / 3) {
+      const moveX = (dx / dist) * this.speed * delta;
+      const moveZ = (dz / dist) * this.speed * delta;
+      this.group.position.x += moveX;
+      this.group.position.z += moveZ;
+    }
   }
 }

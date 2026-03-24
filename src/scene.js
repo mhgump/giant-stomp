@@ -40,20 +40,83 @@ export function createScene() {
   ground.receiveShadow = true;
   scene.add(ground);
 
-  // Houses
-  const houses = [];
-  for (let i = 0; i < 10; i++) {
-    const house = createHouse();
-    house.position.set(
-      (Math.random() - 0.5) * 60,
-      0,
-      (Math.random() - 0.5) * 60
+  // Grid layout — roads form the grid lines, houses sit in the cells between them
+  const cellSize = 8;      // center-to-center distance between cells
+  const roadWidth = 2;     // road strip width
+  const gridLines = 8;     // number of road lines in each direction
+  const wallRadius = 32;   // ring wall radius
+
+  const roadMat = new THREE.MeshStandardMaterial({ color: 0x666666, roughness: 1.0 });
+  const halfLines = Math.floor(gridLines / 2);
+  const roadLength = gridLines * cellSize;
+
+  // Roads sit on the grid lines (edges between cells)
+  for (let i = -halfLines; i <= halfLines; i++) {
+    const pos = i * cellSize;
+    // Vertical road (along z)
+    const vRoad = new THREE.Mesh(
+      new THREE.PlaneGeometry(roadWidth, roadLength),
+      roadMat
     );
-    house.rotation.y = Math.random() * Math.PI * 2;
-    house.castShadow = true;
-    scene.add(house);
-    houses.push(house);
+    vRoad.rotation.x = -Math.PI / 2;
+    vRoad.position.set(pos, 0.01, 0);
+    vRoad.receiveShadow = true;
+    scene.add(vRoad);
+
+    // Horizontal road (along x)
+    const hRoad = new THREE.Mesh(
+      new THREE.PlaneGeometry(roadLength, roadWidth),
+      roadMat
+    );
+    hRoad.rotation.x = -Math.PI / 2;
+    hRoad.position.set(0, 0.01, pos);
+    hRoad.receiveShadow = true;
+    scene.add(hRoad);
   }
+
+  // Houses placed in cell centers (offset by half a cell from road lines)
+  const houses = [];
+  const halfCells = halfLines; // cells exist between -halfLines and halfLines
+  for (let row = -halfCells; row < halfCells; row++) {
+    for (let col = -halfCells; col < halfCells; col++) {
+      const x = (col + 0.5) * cellSize;
+      const z = (row + 0.5) * cellSize;
+      const dist = Math.sqrt(x * x + z * z);
+
+      // Skip if outside the ring wall
+      if (dist + 2.5 > wallRadius) continue;
+
+      // Skip the center cell where the player spawns
+      if (col === -1 && row === -1) continue;
+      if (col === 0 && row === -1) continue;
+      if (col === -1 && row === 0) continue;
+      if (col === 0 && row === 0) continue;
+
+      const house = createHouse();
+      house.position.set(x, 0, z);
+      house.castShadow = true;
+      scene.add(house);
+      houses.push(house);
+    }
+  }
+
+  // Ring wall
+  const wallHeight = 5;
+  const wallThickness = 1.5;
+  const wallSegments = 64;
+  const ringGeo = new THREE.CylinderGeometry(
+    wallRadius, wallRadius, wallHeight, wallSegments, 1, true
+  );
+  const wallMat = new THREE.MeshStandardMaterial({
+    color: 0x888877,
+    roughness: 0.8,
+    side: THREE.DoubleSide,
+  });
+  const ringWall = new THREE.Mesh(ringGeo, wallMat);
+  ringWall.position.y = wallHeight / 2;
+  ringWall.castShadow = true;
+  ringWall.receiveShadow = true;
+  scene.add(ringWall);
 
   return { scene, camera, houses };
 }
