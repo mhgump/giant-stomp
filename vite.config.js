@@ -1,6 +1,9 @@
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  assetsInclude: ["**/*.glb"]
+  assetsInclude: ["**/*.glb"],
+  build: {
+    target: "esnext",
+  },
 });
 

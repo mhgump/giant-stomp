@@ -25,12 +25,12 @@ export function createVillagerState(id, x, z) {
     z,
     rotation: 0,
     alive: true,
-    aiState: 'HIDING', // HIDING | FLEEING | MOVING_TO_HOUSE | SEEKING_GIANT_WITH_ROPE | ROPING
-    isInside: true,
+    aiState: 'FLEEING', // HIDING | FLEEING | MOVING_TO_HOUSE | SEEKING_GIANT_WITH_ROPE | ROPING
+    isInside: false,
     houseId: null,
     targetHouseId: null,
     hasRope: false,
-    bannedHouseId: null, // house they can't return to after being roared out
+    bannedHouseId: null,
     // thrown animation state
     thrown: false,
     throwVelX: 0,
