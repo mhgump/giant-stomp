@@ -1,6 +1,11 @@
 import { GIANT, HOUSE } from '../state/constants.js';
 import { spendEnergy, restoreEnergy } from './EnergySystem.js';
 
+const RAGDOLL_GRAVITY = 20;
+const FLY_HEIGHT = HOUSE.WALL_HEIGHT * 3;
+// Upward velocity needed to reach FLY_HEIGHT under RAGDOLL_GRAVITY
+const FLY_LAUNCH_VEL = Math.sqrt(2 * RAGDOLL_GRAVITY * FLY_HEIGHT);
+
 export function tickHouseInteraction(state, delta) {
   const g = state.giant;
   if (g.status !== 'slamming' || !g.targetHouseId) return;
@@ -18,10 +23,10 @@ export function tickHouseInteraction(state, delta) {
           v.isInside = false;
           v.houseId = null;
           v.ragdoll = true;
-          v.ragdollY = 13;
-          v.ragdollVelY = 3;
-          v.x = house.x + (Math.random() - 0.5) * 3;
-          v.z = house.z + (Math.random() - 0.5) * 3;
+          v.ragdollY = 0;
+          v.ragdollVelY = FLY_LAUNCH_VEL;
+          v.x = house.x;
+          v.z = house.z;
           restoreEnergy(state, GIANT.KILL_RESTORE);
         }
       }

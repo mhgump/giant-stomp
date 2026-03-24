@@ -1,6 +1,9 @@
 import { GIANT, VILLAGER } from '../state/constants.js';
 
 export function tickVillagerAI(state, delta) {
+  // Don't run AI for the first second so villagers are visible on spawn
+  if (state.clock.elapsed < 1.0) return;
+
   for (const v of state.villagers.values()) {
     if (!v.alive || v.thrown) continue;
 
@@ -18,25 +21,21 @@ export function tickVillagerAI(state, delta) {
         tickSeekingGiant(state, v, delta);
         break;
       case 'ROPING':
-        // Stays in this state until rope system resolves it
         break;
     }
   }
 }
 
-// Returns true if the giant is looking toward position (x, z)
 function isInGiantViewCone(state, x, z) {
   const g = state.giant;
   const dx = x - g.x;
   const dz = z - g.z;
-  // Giant nose faces -Z in local space, rotation.y has PI offset
   const angleToTarget = Math.atan2(dx, dz) + Math.PI;
   const angleDiff = Math.abs(normalizeAngle(angleToTarget - g.rotation));
   return angleDiff < GIANT.VIEW_CONE;
 }
 
 function tickHiding(state, v, delta) {
-  // Check if our house was destroyed (giant picked it up)
   if (v.houseId !== null) {
     const house = state.houses.get(v.houseId);
     if (house && house.destroyed) {
@@ -45,30 +44,22 @@ function tickHiding(state, v, delta) {
     }
   }
 
-  // If villager has rope, the rope decision timer handles leaving (see tickHidingRopeDecision)
   if (v.hasRope) return;
 
-  // Proactive scouting: look for rope houses when giant isn't looking
-  // Initialize scout timer if not set
   if (v._scoutTimer === undefined) {
-    v._scoutTimer = 3 + Math.random() * 5; // 3-8 seconds before first scout attempt
+    v._scoutTimer = 3 + Math.random() * 5;
   }
 
   v._scoutTimer -= delta;
   if (v._scoutTimer > 0) return;
 
-  // Reset timer for next attempt
-  v._scoutTimer = 4 + Math.random() * 6; // 4-10 seconds between attempts
+  v._scoutTimer = 4 + Math.random() * 6;
 
-  // Check if there's a rope house worth going to
   const ropeHouse = findNearestRopeHouse(state, v);
   if (!ropeHouse) return;
 
-  // Only leave if the giant is NOT looking at our house
   if (isInGiantViewCone(state, v.x, v.z)) return;
 
-  // Leave house to go find rope
-  const currentHouseId = v.houseId;
   leaveHouse(state, v);
   v.targetHouseId = ropeHouse.id;
   v.aiState = 'MOVING_TO_HOUSE';
@@ -80,13 +71,11 @@ function tickFleeing(state, v) {
     v.targetHouseId = target.id;
     v.aiState = 'MOVING_TO_HOUSE';
   }
-  // If no house available, just stand still
 }
 
 function tickMovingToHouse(state, v, delta) {
   const targetHouse = state.houses.get(v.targetHouseId);
 
-  // If target house was destroyed while moving, flee again
   if (!targetHouse || targetHouse.destroyed) {
     v.targetHouseId = null;
     v.aiState = 'FLEEING';
@@ -98,15 +87,12 @@ function tickMovingToHouse(state, v, delta) {
   const dist = Math.sqrt(dx * dx + dz * dz);
 
   if (dist < 1.5) {
-    // Arrived at house — enter it
     enterHouse(state, v, targetHouse);
     return;
   }
 
-  // Move toward house
   moveToward(v, targetHouse.x, targetHouse.z, delta);
 
-  // Check if passing through a rope house and we don't have rope
   if (!v.hasRope) {
     for (const house of state.houses.values()) {
       if (house.destroyed || !house.hasRope || house.id === v.targetHouseId) continue;
@@ -128,12 +114,10 @@ function tickSeekingGiant(state, v, delta) {
   const dist = Math.sqrt(dx * dx + dz * dz);
 
   if (dist < VILLAGER.ROPE_THROW_RANGE) {
-    // Check line of sight (simple angle check)
     const angleToGiant = Math.atan2(dx, dz);
     const angleDiff = Math.abs(normalizeAngle(angleToGiant - v.rotation));
 
     if (angleDiff < VILLAGER.ROPE_THROW_ANGLE) {
-      // Throw rope!
       v.hasRope = false;
       v.aiState = 'ROPING';
       state._pendingRopes = state._pendingRopes || [];
@@ -142,7 +126,6 @@ function tickSeekingGiant(state, v, delta) {
     }
   }
 
-  // Move toward giant
   moveToward(v, g.x, g.z, delta);
 }
 
@@ -153,8 +136,9 @@ function moveToward(v, targetX, targetZ, delta) {
   if (dist < 0.1) return;
 
   v.rotation = Math.atan2(dx, dz);
-  v.x += (dx / dist) * VILLAGER.SPEED * delta;
-  v.z += (dz / dist) * VILLAGER.SPEED * delta;
+  const step = Math.min(VILLAGER.SPEED * delta, dist);
+  v.x += (dx / dist) * step;
+  v.z += (dz / dist) * step;
 }
 
 function leaveHouse(state, v) {
@@ -176,21 +160,17 @@ function enterHouse(state, v, house) {
   v.aiState = 'HIDING';
   house.occupantIds.push(v.id);
 
-  // Clear the banned house now that we've entered a different one
   v.bannedHouseId = null;
 
-  // If house had rope and villager didn't have one, pick it up
   if (house.hasRope && !v.hasRope) {
     v.hasRope = true;
     house.hasRope = false;
   }
 
-  // If villager has rope, eventually decide to go seek the giant
   if (v.hasRope) {
-    v._ropeDecisionTimer = 2 + Math.random() * 3; // 2-5 seconds before leaving
+    v._ropeDecisionTimer = 2 + Math.random() * 3;
   }
 
-  // Reset scout timer
   v._scoutTimer = 3 + Math.random() * 5;
 }
 
@@ -205,7 +185,6 @@ export function ejectFromHouse(state, v) {
   v.isInside = false;
   v.houseId = null;
   v.aiState = 'FLEEING';
-  // Ban the house they were ejected from (roar) until they enter another
   v.bannedHouseId = previousHouseId;
   delete v._scoutTimer;
 }
@@ -222,12 +201,10 @@ function findNearestSafeHouse(state, v) {
     const dz = house.z - v.z;
     const dist = Math.sqrt(dx * dx + dz * dz);
 
-    // Prefer houses far from the giant
     const gDx = house.x - state.giant.x;
     const gDz = house.z - state.giant.z;
     const giantDist = Math.sqrt(gDx * gDx + gDz * gDz);
 
-    // Score: closer to villager is better, farther from giant is better
     const score = dist - giantDist * 0.5;
 
     if (score < bestScore) {
@@ -246,9 +223,8 @@ function findNearestRopeHouse(state, v) {
 
   for (const house of state.houses.values()) {
     if (house.destroyed || !house.hasRope) continue;
-    if (house.id === v.houseId) continue; // already in this house
+    if (house.id === v.houseId) continue;
 
-    // Skip houses that are in the direction of the giant from the villager
     const toHouseX = house.x - v.x;
     const toHouseZ = house.z - v.z;
     const toGiantX = g.x - v.x;
@@ -256,13 +232,11 @@ function findNearestRopeHouse(state, v) {
     const toGiantDist = Math.sqrt(toGiantX * toGiantX + toGiantZ * toGiantZ);
 
     if (toGiantDist > 1) {
-      // Dot product to check if house is in the same direction as the giant
       const dot = (toHouseX * toGiantX + toHouseZ * toGiantZ) / toGiantDist;
       const houseDist = Math.sqrt(toHouseX * toHouseX + toHouseZ * toHouseZ);
-      // If the house is closer than the giant and in roughly the same direction (within 60°)
       if (dot > 0 && houseDist > 1) {
         const cosAngle = dot / houseDist;
-        if (cosAngle > 0.5) continue; // skip — too close to giant's direction
+        if (cosAngle > 0.5) continue;
       }
     }
 
@@ -285,7 +259,6 @@ function normalizeAngle(a) {
   return a;
 }
 
-// Called during HIDING to check if villager with rope should leave
 export function tickHidingRopeDecision(state, delta) {
   for (const v of state.villagers.values()) {
     if (!v.alive || v.aiState !== 'HIDING' || !v.hasRope) continue;

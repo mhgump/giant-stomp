@@ -68,16 +68,17 @@ export function processSpacebar(state) {
       v.aiState = 'THROWN';
       v.isInside = false;
 
-      // Set throw starting position near giant
-      v.x = g.x;
-      v.z = g.z;
-      v.throwY = 5; // start at giant's hand height
+      // Start from villager's current position
+      v.throwY = 0;
 
-      // Throw velocity in giant's facing direction (nose faces -Z)
-      const throwSpeed = 20;
-      v.throwVelX = -Math.sin(g.rotation) * throwSpeed;
-      v.throwVelZ = -Math.cos(g.rotation) * throwSpeed;
-      v.throwVelY = 8; // upward arc
+      // Fling toward the giant and upward
+      const dx = g.x - v.x;
+      const dz = g.z - v.z;
+      const dist = Math.sqrt(dx * dx + dz * dz) || 1;
+      const throwSpeed = 15;
+      v.throwVelX = (dx / dist) * throwSpeed;
+      v.throwVelZ = (dz / dist) * throwSpeed;
+      v.throwVelY = 12; // upward arc
     }
 
     // If no more ropes, release giant

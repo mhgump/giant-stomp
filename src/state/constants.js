@@ -14,7 +14,7 @@ export const GIANT = {
 };
 
 export const VILLAGER = {
-  COUNT: 12,
+  COUNT: 30,
   SPEED: 5,
   ROPE_THROW_RANGE: 10,
   ROPE_THROW_ANGLE: Math.PI / 6, // 30 deg LOS cone
@@ -29,4 +29,5 @@ export const ROPE = {
 
 export const HOUSE = {
   PICKUP_DISTANCE: 4,
+  WALL_HEIGHT: 5,
 };

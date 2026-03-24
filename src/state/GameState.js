@@ -7,6 +7,8 @@ import { tickRope, processSpacebar, tickThrownVillagers } from '../systems/RopeS
 import { executeRoar } from '../systems/RoarSystem.js';
 import { tickCollisions } from '../systems/CollisionSystem.js';
 
+const WALL_RADIUS = 32;
+
 export class GameState {
   constructor(housePositions) {
     this.giant = createGiantState();
@@ -20,15 +22,14 @@ export class GameState {
       this.houses.set(h.id, createHouseState(h.id, h.x, h.z, h.hasRope));
     }
 
-    // Spawn villagers distributed across non-destroyed houses
-    const houseList = Array.from(this.houses.values());
+    // Spawn villagers at random positions inside the ring wall
     for (let i = 0; i < VILLAGER.COUNT; i++) {
-      const house = houseList[i % houseList.length];
-      const v = createVillagerState(i, house.x, house.z);
-      v.houseId = house.id;
-      v.isInside = true;
-      v.aiState = 'HIDING';
-      house.occupantIds.push(i);
+      let x, z;
+      do {
+        x = (Math.random() - 0.5) * WALL_RADIUS * 2;
+        z = (Math.random() - 0.5) * WALL_RADIUS * 2;
+      } while (Math.sqrt(x * x + z * z) > WALL_RADIUS - 2);
+      const v = createVillagerState(i, x, z);
       this.villagers.set(i, v);
     }
   }
@@ -120,12 +121,15 @@ export class GameState {
 
     if (g.status !== 'moving_to_house' && g.status !== 'moving_to_villager') return;
 
-    // If tracking a villager, update target position to their current location
+    // If tracking a villager, update target to their current location
     if (g.status === 'moving_to_villager' && g.targetVillagerId !== null) {
       const v = this.villagers.get(g.targetVillagerId);
       if (v && v.alive) {
         g.targetX = v.x;
         g.targetZ = v.z;
+      } else {
+        g.status = 'idle';
+        return;
       }
     }
 
@@ -161,17 +165,18 @@ export class GameState {
       g.rotation += angleDiff;
     }
 
-    // Only move when roughly facing target
+    // Only move when roughly facing target, clamp to not overshoot
     if (Math.abs(angleDiff) < Math.PI / 3) {
-      g.x += (dx / dist) * GIANT.SPEED * delta;
-      g.z += (dz / dist) * GIANT.SPEED * delta;
+      const step = Math.min(GIANT.SPEED * delta, dist);
+      g.x += (dx / dist) * step;
+      g.z += (dz / dist) * step;
     }
   }
 
   tickRagdollVillagers(delta) {
     const gravity = 20;
     for (const v of this.villagers.values()) {
-      if (!v.ragdoll || v.ragdollY <= 0) continue;
+      if (!v.ragdoll || (v.ragdollY <= 0 && v.ragdollVelY <= 0)) continue;
       v.ragdollVelY -= gravity * delta;
       v.ragdollY = Math.max(0, v.ragdollY + v.ragdollVelY * delta);
     }
