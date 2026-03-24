@@ -8,6 +8,7 @@ import { HouseRenderer } from './rendering/HouseRenderer.js';
 import { VillagerRenderer } from './rendering/VillagerRenderer.js';
 import { RopeRenderer } from './rendering/RopeRenderer.js';
 import { BubbleSystem } from './ui/BubbleSystem.js';
+import { loadCharacterLibrary } from './characters.js';
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -16,8 +17,9 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
 
-const { scene, camera, houseMeshes, housePositions } = createScene();
-const player = new Player(scene);
+const { scene, camera, houseMeshes, housePositions } = await createScene();
+const characterLibrary = await loadCharacterLibrary();
+const player = new Player(scene, characterLibrary);
 const input = new InputManager(camera, houseMeshes);
 const gameState = new GameState(housePositions);
 const hud = new HUD(input);
@@ -54,7 +56,7 @@ function animate() {
   gameState.tick(delta);
 
   // 3. Sync renderers from state
-  player.syncFromState(gameState.giant);
+  player.syncFromState(gameState.giant, delta);
   houseRenderer.sync(gameState.houses, gameState.giant);
   villagerRenderer.sync(gameState.villagers);
   ropeRenderer.sync(gameState.giant, gameState.villagers);
