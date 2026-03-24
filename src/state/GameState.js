@@ -125,6 +125,24 @@ export class GameState {
 
     if (dist < arrivalDist) {
       if (g.status === 'moving_to_house') {
+        const house = this.houses.get(g.targetHouseId);
+        if (house && !house.destroyed) {
+          let netEnergy = -GIANT.PICKUP_COST;
+          for (const vid of house.occupantIds) {
+            const v = this.villagers.get(vid);
+            if (v && v.alive) netEnergy += GIANT.KILL_RESTORE;
+          }
+          g.energy = Math.min(g.energy + netEnergy, g.maxEnergy);
+          if (g.energy <= 0) {
+            g.energy = 0;
+            this.clock.gameOver = true;
+            this.clock.winner = 'villagers';
+            g.status = 'idle';
+            g.targetX = null;
+            g.targetZ = null;
+            return;
+          }
+        }
         g.status = 'picking_up';
         g.pickupTimer = 0;
         // House interaction handled in Phase 3

@@ -1,5 +1,4 @@
 import { GIANT, HOUSE } from '../state/constants.js';
-import { spendEnergy, restoreEnergy } from './EnergySystem.js';
 
 export function tickHouseInteraction(state, delta) {
   const g = state.giant;
@@ -17,17 +16,13 @@ function resolvePickup(state) {
   const house = state.houses.get(g.targetHouseId);
 
   if (house && !house.destroyed) {
-    // Spend energy to pick up
-    spendEnergy(state, GIANT.PICKUP_COST);
-
-    // Consume occupants and restore energy
+    // Kill occupants (energy already applied on arrival)
     for (const vid of house.occupantIds) {
       const v = state.villagers.get(vid);
       if (v && v.alive) {
         v.alive = false;
         v.isInside = false;
         v.houseId = null;
-        restoreEnergy(state, GIANT.KILL_RESTORE);
       }
     }
     house.occupantIds = [];
