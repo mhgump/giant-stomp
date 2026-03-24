@@ -1,6 +1,8 @@
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  assetsInclude: ["**/*.glb"]
+  base: '/giant-stomp/',
+  build: {
+    target: 'esnext',
+  },
 });
-

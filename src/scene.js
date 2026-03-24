@@ -1,11 +1,13 @@
 import * as THREE from 'three';
 import { ROPE } from './state/constants.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import houseUrl from './assets/house.glb?url';
-import roadTexUrl from './assets/textures/road.png?url';
-import tileTexUrl from './assets/textures/tile.png?url';
-import wallTexUrl from './assets/textures/wall.png?url';
-import grassTexUrl from './assets/textures/grass.png?url';
+
+const BASE = import.meta.env.BASE_URL;
+const houseUrl = `${BASE}assets/house.glb`;
+const roadTexUrl = `${BASE}assets/textures/road.png`;
+const tileTexUrl = `${BASE}assets/textures/tile.png`;
+const wallTexUrl = `${BASE}assets/textures/wall.png`;
+const grassTexUrl = `${BASE}assets/textures/grass.png`;
 
 let nextHouseId = 0;
 

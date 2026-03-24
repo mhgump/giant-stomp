@@ -5,6 +5,8 @@ const MAX_HEIGHT = 100;
 const LAND_INNER = WALL_RADIUS + 3;
 const LAND_SPACING = 3.5;    // gap between stacked houses on the perimeter
 
+import * as THREE from 'three';
+
 export class HouseRenderer {
   constructor(scene, houseMeshes) {
     this.scene = scene;
@@ -68,8 +70,11 @@ export class HouseRenderer {
 
         if (anim.timer >= ARC_DURATION) {
           anim.phase = 'landed';
-          mesh.position.set(anim.lx, 0, anim.lz);
           mesh.rotation.set(Math.PI, Math.random() * Math.PI * 2, 0);
+          mesh.position.set(anim.lx, 0, anim.lz);
+          mesh.updateMatrixWorld(true);
+          const box = new THREE.Box3().setFromObject(mesh);
+          if (box.min.y < 0) mesh.position.y -= box.min.y;
         }
       }
       // 'landed': no more updates

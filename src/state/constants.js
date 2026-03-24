@@ -8,8 +8,8 @@ export const GIANT = {
   TURN_SPEED: 2.5,         // radians per second
   COLLISION_RADIUS: 3,
   PICKUP_DURATION: 1.5,    // seconds for pickup animation
-  VILLAGER_RAGDOLL_TIME: 0.5, // seconds into pickup when villagers fall out
-  SLAM_DURATION: 1.0,      // seconds giant holds slam pose after destroying a house
+  VILLAGER_RAGDOLL_TIME: 0.4, // seconds into pickup when villagers fall out
+  SLAM_DURATION: 0.5,      // seconds giant holds slam pose after destroying a house
   VIEW_CONE: (70 * Math.PI) / 180 / 2, // 70 deg total, half-angle for checks
 };
 

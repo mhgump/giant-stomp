@@ -1,9 +1,11 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { clone as cloneSkeleton } from "three/examples/jsm/utils/SkeletonUtils.js";
+import { GIANT } from "./state/constants.js";
 
-import giantUrl from "./assets/characters/giant.glb?url";
-import manUrl from "./assets/characters/man.glb?url";
+const BASE = import.meta.env.BASE_URL;
+const giantUrl = `${BASE}assets/characters/giant.glb`;
+const manUrl = `${BASE}assets/characters/man.glb`;
 
 /*
 Assumptions:
@@ -104,6 +106,7 @@ export function createGiant(library) {
     .clipAction(library.clips.giantSlam)
     .setLoop(THREE.LoopOnce, 1);
   slamAction.clampWhenFinished = true;
+  slamAction.timeScale = library.clips.giantSlam.duration / GIANT.SLAM_DURATION;
 
   const giant = {
     type: "giant",
