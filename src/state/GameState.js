@@ -112,6 +112,9 @@ export class GameState {
     if (g.status === 'slamming') {
       g.slamTimer += delta;
       if (g.slamTimer >= GIANT.SLAM_DURATION) {
+        // Guard against large deltas that skip over VILLAGER_RAGDOLL_TIME in one frame,
+        // which would cause tickGiantMovement to reset state before tickHouseInteraction fires.
+        tickHouseInteraction(this, delta);
         g.status = 'idle';
         g.slamTimer = 0;
         g.targetHouseId = null;

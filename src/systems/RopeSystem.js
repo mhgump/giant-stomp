@@ -62,23 +62,11 @@ export function processSpacebar(state) {
 
     const v = state.villagers.get(villagerId);
     if (v && v.alive) {
-      // Launch villager in the direction the giant is facing
       v.alive = false;
-      v.thrown = true;
-      v.aiState = 'THROWN';
       v.isInside = false;
-
-      // Start from villager's current position
-      v.throwY = 0;
-
-      // Fling toward the giant and upward
-      const dx = g.x - v.x;
-      const dz = g.z - v.z;
-      const dist = Math.sqrt(dx * dx + dz * dz) || 1;
-      const throwSpeed = 15;
-      v.throwVelX = (dx / dist) * throwSpeed;
-      v.throwVelZ = (dz / dist) * throwSpeed;
-      v.throwVelY = 12; // upward arc
+      v.ragdoll = true;
+      v.ragdollY = 0;
+      v.ragdollVelY = 12;
     }
 
     // If no more ropes, release giant
