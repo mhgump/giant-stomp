@@ -64,8 +64,8 @@ function animate() {
   bubbleSystem.update(gameState, camera);
 
   // 4. Camera follow (behind player based on facing direction)
-  const behindX = Math.sin(gameState.giant.rotation) * cameraDist;
-  const behindZ = Math.cos(gameState.giant.rotation) * cameraDist;
+  const behindX = -Math.sin(gameState.giant.rotation) * cameraDist;
+  const behindZ = -Math.cos(gameState.giant.rotation) * cameraDist;
   const targetCameraPos = new THREE.Vector3(
     gameState.giant.x + behindX,
     cameraHeight,

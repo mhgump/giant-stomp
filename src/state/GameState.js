@@ -6,6 +6,7 @@ import { tickVillagerAI, tickHidingRopeDecision } from '../systems/VillagerAISys
 import { tickRope, processSpacebar, tickThrownVillagers } from '../systems/RopeSystem.js';
 import { executeRoar } from '../systems/RoarSystem.js';
 import { tickCollisions } from '../systems/CollisionSystem.js';
+import { RoadGraph, buildPathToHouse } from '../systems/Pathfinding.js';
 
 const WALL_RADIUS = 32;
 
@@ -16,6 +17,7 @@ export class GameState {
     this.villagers = new Map();
     this.clock = { elapsed: 0, gameOver: false, winner: null };
     this.commands = [];
+    this.roadGraph = new RoadGraph();
 
     // Initialize houses from scene data
     for (const h of housePositions) {
@@ -86,6 +88,8 @@ export class GameState {
         this.giant.targetX = house.x;
         this.giant.targetZ = house.z;
         this.giant.targetHouseId = cmd.houseId;
+        this.giant.path = buildPathToHouse(this.roadGraph, this.giant.x, this.giant.z, house.x, house.z);
+        this.giant.pathIndex = 0;
         break;
       }
       case 'move_to_villager': {
@@ -124,8 +128,52 @@ export class GameState {
 
     if (g.status !== 'moving_to_house' && g.status !== 'moving_to_villager') return;
 
-    // If tracking a villager, update target to their current location
-    if (g.status === 'moving_to_villager' && g.targetVillagerId !== null) {
+    // --- Moving to house: follow road path ---
+    if (g.status === 'moving_to_house') {
+      if (!g.path || g.pathIndex >= g.path.length) {
+        g.status = 'idle';
+        return;
+      }
+
+      // Skip intermediate waypoints the giant is already close to 
+      while (g.pathIndex < g.path.length - 1) {
+        const skip = g.path[g.pathIndex];
+        const sdx = skip.x - g.x;
+        const sdz = skip.z - g.z;
+        if (sdx * sdx + sdz * sdz < 5) {
+          g.pathIndex++;
+        } else {
+          break;
+        }
+      }
+
+      const wp = g.path[g.pathIndex];
+      const dx = wp.x - g.x;
+      const dz = wp.z - g.z;
+      const dist = Math.sqrt(dx * dx + dz * dz);
+
+      const isLast = g.pathIndex === g.path.length - 1;
+      const threshold = isLast ? HOUSE.PICKUP_DISTANCE : 1.0;
+
+      if (dist < threshold) {
+        if (isLast) {
+          g.status = 'slamming';
+          g.slamTimer = 0;
+          g.targetX = null;
+          g.targetZ = null;
+          g.path = null;
+        } else {
+          g.pathIndex++;
+        }
+        return;
+      }
+
+      this._turnAndMove(g, dx, dz, dist, delta);
+      return;
+    }
+
+    // --- Moving to villager: direct movement ---
+    if (g.targetVillagerId !== null) {
       const v = this.villagers.get(g.targetVillagerId);
       if (v && v.alive) {
         g.targetX = v.x;
@@ -136,27 +184,24 @@ export class GameState {
       }
     }
 
-    const dx = g.targetX - g.x;
-    const dz = g.targetZ - g.z;
-    const dist = Math.sqrt(dx * dx + dz * dz);
+    {
+      const dx = g.targetX - g.x;
+      const dz = g.targetZ - g.z;
+      const dist = Math.sqrt(dx * dx + dz * dz);
 
-    const arrivalDist = g.status === 'moving_to_house' ? HOUSE.PICKUP_DISTANCE : GIANT.COLLISION_RADIUS;
-
-    if (dist < arrivalDist) {
-      if (g.status === 'moving_to_house') {
-        g.status = 'slamming';
-        g.slamTimer = 0;
-        // targetHouseId kept set; HouseSystem fires at slamTimer >= VILLAGER_RAGDOLL_TIME
-      } else {
+      if (dist < GIANT.COLLISION_RADIUS) {
         g.status = 'idle';
+        g.targetX = null;
+        g.targetZ = null;
+        return;
       }
-      g.targetX = null;
-      g.targetZ = null;
-      return;
-    }
 
-    // Turn toward target (nose faces -Z, so offset by PI)
-    const targetAngle = Math.atan2(dx, dz) + Math.PI;
+      this._turnAndMove(g, dx, dz, dist, delta);
+    }
+  }
+
+  _turnAndMove(g, dx, dz, dist, delta) {
+    const targetAngle = Math.atan2(dx, dz);
     let angleDiff = targetAngle - g.rotation;
     while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
     while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
@@ -168,7 +213,6 @@ export class GameState {
       g.rotation += angleDiff;
     }
 
-    // Only move when roughly facing target, clamp to not overshoot
     if (Math.abs(angleDiff) < Math.PI / 3) {
       const step = Math.min(GIANT.SPEED * delta, dist);
       g.x += (dx / dist) * step;

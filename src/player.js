@@ -29,6 +29,6 @@ export class Player {
 
     this.group.position.x = giantState.x;
     this.group.position.z = giantState.z;
-    this.group.rotation.y = giantState.rotation;
+    this.group.rotation.y = giantState.rotation + Math.PI;
   }
 }

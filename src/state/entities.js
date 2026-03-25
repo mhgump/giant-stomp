@@ -16,6 +16,8 @@ export function createGiantState() {
     slamTimer: 0,
     ropeStack: [],
     ropedTime: 0,
+    path: null,       // waypoint array for road-following
+    pathIndex: 0,
   };
 }
 
@@ -32,6 +34,9 @@ export function createVillagerState(id, x, z) {
     targetHouseId: null,
     hasRope: false,
     bannedHouseId: null,
+    path: null,             // waypoint array for road-following
+    pathIndex: 0,
+    pathTargetHouseId: null,
     // thrown animation state
     thrown: false,
     throwVelX: 0,

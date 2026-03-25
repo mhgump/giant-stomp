@@ -1,4 +1,5 @@
 import { GIANT, VILLAGER } from '../state/constants.js';
+import { buildPathToHouse, buildPathToPoint } from './Pathfinding.js';
 
 export function tickVillagerAI(state, delta) {
   // Don't run AI for the first second so villagers are visible on spawn
@@ -78,33 +79,61 @@ function tickMovingToHouse(state, v, delta) {
 
   if (!targetHouse || targetHouse.destroyed) {
     v.targetHouseId = null;
+    v.path = null;
     v.aiState = 'FLEEING';
     return;
   }
 
-  const dx = targetHouse.x - v.x;
-  const dz = targetHouse.z - v.z;
-  const dist = Math.sqrt(dx * dx + dz * dz);
-
-  if (dist < 1.5) {
-    enterHouse(state, v, targetHouse);
+  // If already on an adjacent road (within half a cell diagonal of the house), go directly in
+  const directDx = targetHouse.x - v.x;
+  const directDz = targetHouse.z - v.z;
+  const directDist = Math.sqrt(directDx * directDx + directDz * directDz);
+  if (directDist < 6.0) {
+    if (directDist < 1.5) {
+      enterHouse(state, v, targetHouse);
+      v.path = null;
+    } else {
+      moveToward(v, targetHouse.x, targetHouse.z, delta);
+    }
     return;
   }
 
-  moveToward(v, targetHouse.x, targetHouse.z, delta);
-
-  if (!v.hasRope) {
-    for (const house of state.houses.values()) {
-      if (house.destroyed || !house.hasRope || house.id === v.targetHouseId) continue;
-      const hDx = house.x - v.x;
-      const hDz = house.z - v.z;
-      if (Math.sqrt(hDx * hDx + hDz * hDz) < 2) {
-        v.hasRope = true;
-        house.hasRope = false;
-        break;
-      }
-    }
+  // (Re)compute road path when target changes or path not yet built
+  if (!v.path || v.pathTargetHouseId !== v.targetHouseId) {
+    v.path = buildPathToHouse(state.roadGraph, v.x, v.z, targetHouse.x, targetHouse.z);
+    v.pathIndex = 0;
+    v.pathTargetHouseId = v.targetHouseId;
   }
+
+  // Fallback to direct movement if no path found
+  if (!v.path || v.path.length === 0) {
+    if (directDist < 1.5) {
+      enterHouse(state, v, targetHouse);
+    } else {
+      moveToward(v, targetHouse.x, targetHouse.z, delta);
+    }
+    return;
+  }
+
+  const wp = v.path[v.pathIndex];
+  const dx = wp.x - v.x;
+  const dz = wp.z - v.z;
+  const dist = Math.sqrt(dx * dx + dz * dz);
+
+  const isLast = v.pathIndex === v.path.length - 1;
+  const threshold = isLast ? 1.5 : 1.0;
+
+  if (dist < threshold) {
+    if (isLast) {
+      enterHouse(state, v, targetHouse);
+      v.path = null;
+    } else {
+      v.pathIndex++;
+    }
+    return;
+  }
+
+  moveToward(v, wp.x, wp.z, delta);
 }
 
 function tickSeekingGiant(state, v, delta) {
@@ -113,6 +142,7 @@ function tickSeekingGiant(state, v, delta) {
   const dz = g.z - v.z;
   const dist = Math.sqrt(dx * dx + dz * dz);
 
+  // Within throwing range — approach directly and attempt to rope
   if (dist < VILLAGER.ROPE_THROW_RANGE) {
     const angleToGiant = Math.atan2(dx, dz);
     const angleDiff = Math.abs(normalizeAngle(angleToGiant - v.rotation));
@@ -124,9 +154,39 @@ function tickSeekingGiant(state, v, delta) {
       state._pendingRopes.push(v.id);
       return;
     }
+    moveToward(v, g.x, g.z, delta);
+    return;
   }
 
-  moveToward(v, g.x, g.z, delta);
+  // Follow road path toward the giant; recompute when giant moves significantly
+  const needsRecompute = !v._ropeSeekPath ||
+    !v._ropeSeekGiantPos ||
+    Math.sqrt(
+      (g.x - v._ropeSeekGiantPos.x) ** 2 + (g.z - v._ropeSeekGiantPos.z) ** 2
+    ) > 4;
+
+  if (needsRecompute) {
+    v._ropeSeekPath = buildPathToPoint(state.roadGraph, v.x, v.z, g.x, g.z);
+    v._ropeSeekPathIndex = 0;
+    v._ropeSeekGiantPos = { x: g.x, z: g.z };
+  }
+
+  if (!v._ropeSeekPath || v._ropeSeekPathIndex >= v._ropeSeekPath.length) {
+    moveToward(v, g.x, g.z, delta);
+    return;
+  }
+
+  const wp = v._ropeSeekPath[v._ropeSeekPathIndex];
+  const wdx = wp.x - v.x;
+  const wdz = wp.z - v.z;
+  const wdist = Math.sqrt(wdx * wdx + wdz * wdz);
+
+  if (wdist < 1.0) {
+    v._ropeSeekPathIndex++;
+    return;
+  }
+
+  moveToward(v, wp.x, wp.z, delta);
 }
 
 function moveToward(v, targetX, targetZ, delta) {
@@ -150,6 +210,7 @@ function leaveHouse(state, v) {
   }
   v.isInside = false;
   v.houseId = null;
+  v.path = null;
   delete v._scoutTimer;
 }
 
@@ -184,9 +245,12 @@ export function ejectFromHouse(state, v) {
   }
   v.isInside = false;
   v.houseId = null;
+  v.path = null;
   v.aiState = 'FLEEING';
   v.bannedHouseId = previousHouseId;
   delete v._scoutTimer;
+  delete v._ropeSeekPath;
+  delete v._ropeSeekGiantPos;
 }
 
 function findNearestSafeHouse(state, v) {
