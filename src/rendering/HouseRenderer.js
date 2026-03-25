@@ -1,36 +1,31 @@
-const WALL_RADIUS = 32;
-const LAUNCH_DURATION = 1.0; // seconds to reach max height
-const ARC_DURATION = 2.0;    // seconds to fall to outside the wall
-const MAX_HEIGHT = 100;
-const LAND_INNER = WALL_RADIUS + 3;
-const LAND_SPACING = 3.5;    // gap between stacked houses on the perimeter
+const WALL_RADIUS     = 32;
+const LAUNCH_DURATION = 1.0;   // seconds to reach max height
+const ARC_DURATION    = 2.0;   // seconds to arc to landing zone
+const MAX_HEIGHT      = 100;
+const LAND_INNER      = WALL_RADIUS + 3; // base landing distance from origin
 
 import * as THREE from 'three';
 
 export class HouseRenderer {
-  constructor(scene, houseMeshes) {
-    this.scene = scene;
-    this.meshes = houseMeshes; // Map<id, THREE.Group>
+  /**
+   * @param {THREE.Scene} scene
+   * @param {Map<number, THREE.Group>} houseMeshes
+   * @param {import('../systems/HousePhysics.js').HousePhysics|null} physics
+   */
+  constructor(scene, houseMeshes, physics = null) {
+    this.scene      = scene;
+    this.meshes     = houseMeshes;
     this.animations = new Map(); // id -> anim state
-    this.landingSlots = new Map(); // angle bucket -> count (for stacking)
+    this.physics    = physics;
   }
 
-  // Compute a landing position that stacks houses on the outside of the wall
+  // Compute initial target landing position (radially outward from house origin)
   _landingPos(ox, oz) {
-    const d = Math.sqrt(ox * ox + oz * oz);
+    const d     = Math.sqrt(ox * ox + oz * oz);
     const angle = d > 0.1 ? Math.atan2(oz, ox) : 0;
-
-    // Quantise to 16 angular slots around the perimeter
-    const slotCount = 16;
-    const slot = Math.round(((angle + Math.PI) / (Math.PI * 2)) * slotCount) % slotCount;
-    const stackDepth = this.landingSlots.get(slot) ?? 0;
-    this.landingSlots.set(slot, stackDepth + 1);
-
-    const slotAngle = ((slot / slotCount) * Math.PI * 2) - Math.PI;
-    const dist = LAND_INNER + stackDepth * LAND_SPACING;
     return {
-      lx: Math.cos(slotAngle) * dist,
-      lz: Math.sin(slotAngle) * dist,
+      lx: Math.cos(angle) * LAND_INNER,
+      lz: Math.sin(angle) * LAND_INNER,
     };
   }
 
@@ -69,15 +64,30 @@ export class HouseRenderer {
         mesh.rotation.z += delta * 1.8;
 
         if (anim.timer >= ARC_DURATION) {
-          anim.phase = 'landed';
+          // Tumbled-on-ground orientation
           mesh.rotation.set(Math.PI, Math.random() * Math.PI * 2, 0);
-          mesh.position.set(anim.lx, 0, anim.lz);
+
+          // Use Rapier to find the final resting position, resolving any
+          // overlaps with previously-landed houses (no bounce, heavy slide).
+          let fx = anim.lx;
+          let fz = anim.lz;
+          if (this.physics) {
+            const settled = this.physics.settle(id, anim.lx, anim.lz);
+            fx = settled.x;
+            fz = settled.z;
+          }
+
+          mesh.position.set(fx, 0, fz);
           mesh.updateMatrixWorld(true);
+
+          // Ensure mesh sits above ground
           const box = new THREE.Box3().setFromObject(mesh);
           if (box.min.y < 0) mesh.position.y -= box.min.y;
+
+          anim.phase = 'landed';
         }
       }
-      // 'landed': no more updates
+      // 'landed': position is fixed — no further updates
     }
   }
 }

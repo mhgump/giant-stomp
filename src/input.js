@@ -2,12 +2,13 @@ import * as THREE from 'three';
 
 export class InputManager {
   constructor(camera, houseMeshes) {
-    this.camera = camera;
+    this.camera      = camera;
     this.houseMeshes = houseMeshes; // Map<id, THREE.Group>
-    this.raycaster = new THREE.Raycaster();
+    this.raycaster   = new THREE.Raycaster();
     this.pendingCommand = null;
-    this.spacePressed = false;
-    this.roarPressed = false;
+    this.spacePressed   = false;
+    this.roarPressed    = false;
+    this.turnPressed    = false;
 
     // Touch (primary) and mouse (fallback for desktop testing)
     window.addEventListener('touchstart', (e) => {
@@ -26,6 +27,9 @@ export class InputManager {
       }
       if (e.code === 'KeyR') {
         this.roarPressed = true;
+      }
+      if (e.code === 'KeyT') {
+        this.turnPressed = true;
       }
     });
   }
@@ -81,6 +85,14 @@ export class InputManager {
     return false;
   }
 
+  consumeTurn() {
+    if (this.turnPressed) {
+      this.turnPressed = false;
+      return true;
+    }
+    return false;
+  }
+
   // Called by HUD break button
   triggerSpace() {
     this.spacePressed = true;
@@ -89,5 +101,10 @@ export class InputManager {
   // Called by HUD roar button
   triggerRoar() {
     this.roarPressed = true;
+  }
+
+  // Called by HUD turn button
+  triggerTurn() {
+    this.turnPressed = true;
   }
 }

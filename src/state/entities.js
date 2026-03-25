@@ -18,6 +18,9 @@ export function createGiantState() {
     ropedTime: 0,
     path: null,       // waypoint array for road-following
     pathIndex: 0,
+    // smooth 180° turn animation: null when idle
+    // { fromRot, toRot, progress }  (toRot is NOT pre-normalised to keep arc direction stable)
+    turnAnim: null,
   };
 }
 
@@ -47,6 +50,8 @@ export function createVillagerState(id, x, z) {
     ragdoll: false,
     ragdollY: 0,
     ragdollVelY: 0,
+    // houses this villager has entered (used by scouting AI)
+    visitedHouseIds: [],
   };
 }
 

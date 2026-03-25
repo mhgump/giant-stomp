@@ -47,22 +47,25 @@ function tickHiding(state, v, delta) {
 
   if (v.hasRope) return;
 
+  // Scout timer: 3–10 seconds between house searches
   if (v._scoutTimer === undefined) {
-    v._scoutTimer = 3 + Math.random() * 5;
+    v._scoutTimer = 3 + Math.random() * 7;
   }
 
   v._scoutTimer -= delta;
   if (v._scoutTimer > 0) return;
 
-  v._scoutTimer = 4 + Math.random() * 6;
-
-  const ropeHouse = findNearestRopeHouse(state, v);
-  if (!ropeHouse) return;
+  v._scoutTimer = 3 + Math.random() * 7;
 
   if (isInGiantViewCone(state, v.x, v.z)) return;
 
+  // Prefer a house known to contain rope; fall back to any unvisited house
+  let target = findNearestRopeHouse(state, v);
+  if (!target) target = findUnvisitedHouse(state, v);
+  if (!target) return;
+
   leaveHouse(state, v);
-  v.targetHouseId = ropeHouse.id;
+  v.targetHouseId = target.id;
   v.aiState = 'MOVING_TO_HOUSE';
 }
 
@@ -223,6 +226,12 @@ function enterHouse(state, v, house) {
 
   v.bannedHouseId = null;
 
+  // Record this house as visited
+  if (!v.visitedHouseIds) v.visitedHouseIds = [];
+  if (!v.visitedHouseIds.includes(house.id)) {
+    v.visitedHouseIds.push(house.id);
+  }
+
   if (house.hasRope && !v.hasRope) {
     v.hasRope = true;
     house.hasRope = false;
@@ -232,7 +241,7 @@ function enterHouse(state, v, house) {
     v._ropeDecisionTimer = 2 + Math.random() * 3;
   }
 
-  v._scoutTimer = 3 + Math.random() * 5;
+  v._scoutTimer = 3 + Math.random() * 7;
 }
 
 export function ejectFromHouse(state, v) {
@@ -311,6 +320,34 @@ function findNearestRopeHouse(state, v) {
     if (dist < bestDist) {
       bestDist = dist;
       best = house;
+    }
+  }
+
+  return best;
+}
+
+/**
+ * Find the nearest house this villager has not yet entered.
+ * Skips the current house, the banned house, and destroyed houses.
+ */
+function findUnvisitedHouse(state, v) {
+  const visited = v.visitedHouseIds || [];
+  let best     = null;
+  let bestDist = Infinity;
+
+  for (const house of state.houses.values()) {
+    if (house.destroyed) continue;
+    if (house.id === v.houseId) continue;
+    if (house.id === v.bannedHouseId) continue;
+    if (visited.includes(house.id)) continue;
+
+    const dx   = house.x - v.x;
+    const dz   = house.z - v.z;
+    const dist = Math.sqrt(dx * dx + dz * dz);
+
+    if (dist < bestDist) {
+      bestDist = dist;
+      best     = house;
     }
   }
 

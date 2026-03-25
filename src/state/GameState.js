@@ -52,6 +52,7 @@ export class GameState {
 
     // Systems
     tickEnergy(this, delta);
+    this.tickTurnAnimation(delta);
     this.tickGiantMovement(delta);
     tickHouseInteraction(this, delta);
     tickVillagerAI(this, delta);
@@ -107,6 +108,19 @@ export class GameState {
       case 'spam_space':
         processSpacebar(this);
         break;
+      case 'turn': {
+        const g = this.giant;
+        if (g.turnAnim) break; // already mid-turn, ignore
+        // Start a smooth 180° turn; cancel navigation so the giant pivots cleanly
+        g.turnAnim = { fromRot: g.rotation, toRot: g.rotation + Math.PI, progress: 0 };
+        g.status = 'idle';
+        g.targetX = null;
+        g.targetZ = null;
+        g.path = null;
+        g.targetHouseId = null;
+        g.targetVillagerId = null;
+        break;
+      }
     }
   }
 
@@ -220,6 +234,26 @@ export class GameState {
     }
   }
 
+  tickTurnAnimation(delta) {
+    const g = this.giant;
+    if (!g.turnAnim) return;
+
+    const TURN_DURATION = 0.5; // seconds for a full 180°
+    g.turnAnim.progress += delta / TURN_DURATION;
+
+    if (g.turnAnim.progress >= 1.0) {
+      // Snap to exact target and normalise to (−π, π]
+      g.rotation = g.turnAnim.toRot;
+      while (g.rotation >  Math.PI) g.rotation -= Math.PI * 2;
+      while (g.rotation < -Math.PI) g.rotation += Math.PI * 2;
+      g.turnAnim = null;
+    } else {
+      // Smoothstep easing: slow start, fast middle, slow end
+      const t = _smoothstep(g.turnAnim.progress);
+      g.rotation = g.turnAnim.fromRot + (g.turnAnim.toRot - g.turnAnim.fromRot) * t;
+    }
+  }
+
   tickRagdollVillagers(delta) {
     const gravity = 20;
     for (const v of this.villagers.values()) {
@@ -247,4 +281,9 @@ export class GameState {
     state.clock = data.clock;
     return state;
   }
+}
+
+// Smoothstep: slow → fast → slow easing for the turn animation
+function _smoothstep(t) {
+  return t * t * (3 - 2 * t);
 }
